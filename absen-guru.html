@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Absensi Guru - SMP At-Thahirin 2</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            background-color: #f4f6f8;
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 25px 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="time"],
+        select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        button {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button.whatsapp {
+            background-color: #25d366;
+            margin-top: 20px;
+            width: 100%;
+            font-size: 16px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .error {
+            color: red;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Absensi Guru<br><small>SMP AT-THAHIRIN 2</small></h2>
+
+    <div id="tanggal"></div>
+
+    <form id="form-absen">
+        <label for="nama">Masukan Nama:</label>
+        <input type="text" id="nama" name="nama" required placeholder="Contoh: Ahmad S.Ag">
+
+        <label for="jabatan">Jabatan:</label>
+        <input type="text" id="jabatan" name="jabatan" required placeholder="Contoh: Guru Matematika">
+
+        <label for="status_kehadiran">Status Kehadiran:</label>
+        <select id="status_kehadiran" name="status_kehadiran" onchange="toggleJam()">
+            <option value="Hadir">Hadir</option>
+            <option value="Alpa">Alpa</option>
+            <option value="Sakit">Sakit</option>
+            <option value="Izin">Izin</option>
+        </select>
+
+        <label for="jam_masuk">Jam Masuk (kosongkan jika pulang):</label>
+        <input type="time" id="jam_masuk" name="jam_masuk" disabled>
+
+        <label for="jam_pulang">Jam Pulang (kosongkan jika masuk):</label>
+        <input type="time" id="jam_pulang" name="jam_pulang" disabled>
+
+        <!-- Tombol Deteksi Lokasi Otomatis -->
+        <button type="button" onclick="getLocation()">📍 Deteksi Lokasi Otomatis</button>
+        <p id="lokasiOtomatis" style="margin-top: 10px;"></p>
+
+        <div id="pesan-error" class="error"></div>
+
+        <button type="button" class="whatsapp" onclick="kirimViaWhatsApp()">💬 Kirim Laporan Ke OPS</button>
+    </form>
+</div>
+
+<script>
+    // Menampilkan tanggal dan hari
+    const hari = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat"];
+    const bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni",
+                   "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+    const sekarang = new Date();
+    const hariIni = hari[sekarang.getDay()];
+    const tanggalIni = sekarang.getDate();
+    const bulanIni = bulan[sekarang.getMonth()];
+    const tahunIni = sekarang.getFullYear();
+
+    document.getElementById("tanggal").innerHTML =
+        `<strong>Hari:</strong> ${hariIni}, <strong>Tanggal:</strong> ${tanggalIni} ${bulanIni} ${tahunIni}`;
+
+    let lokasiGPS = "";
+
+    function getLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                showPosition,
+                showError
+            );
+        } else {
+            alert("Geolocation tidak didukung oleh browser Anda.");
+        }
+    }
+
+    function showPosition(position) {
+        const lat = position.coords.latitude.toFixed(6);
+        const lon = position.coords.longitude.toFixed(6);
+        lokasiGPS = `Lat: ${lat}, Lon: ${lon}`;
+        document.getElementById("lokasiOtomatis").textContent = "Lokasi GPS: " + lokasiGPS;
+    }
+
+    function showError(error) {
+        switch(error.code) {
+            case error.PERMISSION_DENIED:
+                alert("Pengguna menolak permintaan geolocation.");
+                break;
+            case error.POSITION_UNAVAILABLE:
+                alert("Informasi lokasi tidak tersedia.");
+                break;
+            case error.TIMEOUT:
+                alert("Permintaan waktu habis.");
+                break;
+            case error.UNKNOWN_ERROR:
+                alert("Terjadi kesalahan yang tidak diketahui.");
+                break;
+        }
+    }
+
+    function toggleJam() {
+        const status = document.getElementById("status_kehadiran").value;
+        const jamMasuk = document.getElementById("jam_masuk");
+        const jamPulang = document.getElementById("jam_pulang");
+
+        if (status === "Alpa") {
+            jamMasuk.disabled = true;
+            jamPulang.disabled = true;
+            jamMasuk.value = "";
+            jamPulang.value = "";
+        } else {
+            jamMasuk.disabled = false;
+            jamPulang.disabled = false;
+        }
+    }
+
+    function kirimViaWhatsApp() {
+        const nama = document.getElementById("nama").value.trim();
+        const jabatan = document.getElementById("jabatan").value.trim();
+        const status = document.getElementById("status_kehadiran").value.trim();
+        const jamMasuk = document.getElementById("jam_masuk").value.trim();
+        const jamPulang = document.getElementById("jam_pulang").value.trim();
+        const tanggal = hariIni + ", " + tanggalIni + " " + bulanIni + " " + tahunIni;
+
+        const errorDiv = document.getElementById("pesan-error");
+        errorDiv.textContent = "";
+
+        if (!nama || !jabatan) {
+            errorDiv.textContent = "Harap lengkapi Nama dan Jabatan!";
+            return;
+        }
+
+        if (!lokasiGPS) {
+            errorDiv.textContent = "Silakan deteksi lokasi terlebih dahulu.";
+            return;
+        }
+
+        if (status !== "Alpa") {
+            if (jamMasuk && jamPulang) {
+                errorDiv.textContent = "Hanya boleh mengisi salah satu: Jam Masuk atau Jam Pulang.";
+                return;
+            }
+
+            if (!jamMasuk && !jamPulang) {
+                errorDiv.textContent = "Silakan isi salah satu: Jam Masuk atau Jam Pulang.";
+                return;
+            }
+        }
+
+        let jenis_absen = "";
+        let waktu_absen = "";
+
+        if (status === "Alpa") {
+            jenis_absen = "Alpa";
+            waktu_absen = "-";
+        } else {
+            jenis_absen = status;
+            waktu_absen = jamMasuk || jamPulang;
+        }
+
+        const pesan = `*LAPORAN ABSENSI GURU*\n\n` +
+                      `Tanggal: ${tanggal}\n` +
+                      `Nama: ${nama}\n` +
+                      `Jabatan: ${jabatan}\n` +
+                      `Status: ${jenis_absen}\n` +
+                      `Waktu: ${waktu_absen}\n` +
+                      `Lokasi: ${lokasiGPS}\n\n` +
+                      `Terima kasih.`;
+
+        const encodedMessage = encodeURIComponent(pesan);
+        const whatsappURL = `https://wa.me/62<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Absensi Guru - SMP At-Thahirin 2</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            background-color: #f4f6f8;
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 25px 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="time"],
+        select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        button {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button.whatsapp {
+            background-color: #25d366;
+            margin-top: 20px;
+            width: 100%;
+            font-size: 16px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .error {
+            color: red;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Absensi Guru<br><small>SMP At-Thahirin 2</small></h2>
+
+    <div id="tanggal"></div>
+
+    <form id="form-absen">
+        <label for="nama">Masukan Nama:</label>
+        <input type="text" id="nama" name="nama" required placeholder="Contoh: Ahmad S.Ag">
+
+        <label for="jabatan">Jabatan:</label>
+        <input type="text" id="jabatan" name="jabatan" required placeholder="Contoh: Guru Matematika">
+
+        <label for="status_kehadiran">Status Kehadiran:</label>
+        <select id="status_kehadiran" name="status_kehadiran" onchange="toggleJam()">
+            <option value="Hadir">Hadir</option>
+            <option value="Alpa">Alpa</option>
+            <option value="Sakit">Sakit</option>
+            <option value="Izin">Izin</option>
+        </select>
+
+        <label for="jam_masuk">Jam Masuk (kosongkan jika pulang):</label>
+        <input type="time" id="jam_masuk" name="jam_masuk" disabled>
+
+        <label for="jam_pulang">Jam Pulang (kosongkan jika masuk):</label>
+        <input type="time" id="jam_pulang" name="jam_pulang" disabled>
+
+        <!-- Tombol Deteksi Lokasi Otomatis -->
+        <button type="button" onclick="getLocation()">📍 Deteksi Lokasi Otomatis</button>
+        <p id="lokasiOtomatis" style="margin-top: 10px;"></p>
+
+        <div id="pesan-error" class="error"></div>
+
+        <button type="button" class="whatsapp" onclick="kirimViaWhatsApp()">💬 Kirim Laporan via WhatsApp</button>
+    </form>
+</div>
+
+<script>
+    // Menampilkan tanggal dan hari
+    const hari = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+    const bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni",
+                   "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+    const sekarang = new Date();
+    const hariIni = hari[sekarang.getDay()];
+    const tanggalIni = sekarang.getDate();
+    const bulanIni = bulan[sekarang.getMonth()];
+    const tahunIni = sekarang.getFullYear();
+
+    document.getElementById("tanggal").innerHTML =
+        `<strong>Hari:</strong> ${hariIni}, <strong>Tanggal:</strong> ${tanggalIni} ${bulanIni} ${tahunIni}`;
+
+    let lokasiGPS = "";
+
+    function getLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                showPosition,
+                showError
+            );
+        } else {
+            alert("Geolocation tidak didukung oleh browser Anda.");
+        }
+    }
+
+    function showPosition(position) {
+        const lat = position.coords.latitude.toFixed(6);
+        const lon = position.coords.longitude.toFixed(6);
+        lokasiGPS = `Lat: ${lat}, Lon: ${lon}`;
+        document.getElementById("lokasiOtomatis").textContent = "Lokasi GPS: " + lokasiGPS;
+    }
+
+    function showError(error) {
+        switch(error.code) {
+            case error.PERMISSION_DENIED:
+                alert("Pengguna menolak permintaan geolocation.");
+                break;
+            case error.POSITION_UNAVAILABLE:
+                alert("Informasi lokasi tidak tersedia.");
+                break;
+            case error.TIMEOUT:
+                alert("Permintaan waktu habis.");
+                break;
+            case error.UNKNOWN_ERROR:
+                alert("Terjadi kesalahan yang tidak diketahui.");
+                break;
+        }
+    }
+
+    function toggleJam() {
+        const status = document.getElementById("status_kehadiran").value;
+        const jamMasuk = document.getElementById("jam_masuk");
+        const jamPulang = document.getElementById("jam_pulang");
+
+        if (status === "Alpa") {
+            jamMasuk.disabled = true;
+            jamPulang.disabled = true;
+            jamMasuk.value = "";
+            jamPulang.value = "";
+        } else {
+            jamMasuk.disabled = false;
+            jamPulang.disabled = false;
+        }
+    }
+
+    function kirimViaWhatsApp() {
+        const nama = document.getElementById("nama").value.trim();
+        const jabatan = document.getElementById("jabatan").value.trim();
+        const status = document.getElementById("status_kehadiran").value.trim();
+        const jamMasuk = document.getElementById("jam_masuk").value.trim();
+        const jamPulang = document.getElementById("jam_pulang").value.trim();
+        const tanggal = hariIni + ", " + tanggalIni + " " + bulanIni + " " + tahunIni;
+
+        const errorDiv = document.getElementById("pesan-error");
+        errorDiv.textContent = "";
+
+        if (!nama || !jabatan) {
+            errorDiv.textContent = "Harap lengkapi Nama dan Jabatan!";
+            return;
+        }
+
+        if (!lokasiGPS) {
+            errorDiv.textContent = "Silakan deteksi lokasi terlebih dahulu.";
+            return;
+        }
+
+        if (status !== "Alpa") {
+            if (jamMasuk && jamPulang) {
+                errorDiv.textContent = "Hanya boleh mengisi salah satu: Jam Masuk atau Jam Pulang.";
+                return;
+            }
+
+            if (!jamMasuk && !jamPulang) {
+                errorDiv.textContent = "Silakan isi salah satu: Jam Masuk atau Jam Pulang.";
+                return;
+            }
+        }
+
+        let jenis_absen = "";
+        let waktu_absen = "";
+
+        if (status === "Alpa") {
+            jenis_absen = "Alpa";
+            waktu_absen = "-";
+        } else {
+            jenis_absen = status;
+            waktu_absen = jamMasuk || jamPulang;
+        }
+
+        const pesan = `*LAPORAN ABSENSI GURU*\n\n` +
+                      `Tanggal: ${tanggal}\n` +
+                      `Nama: ${nama}\n` +
+                      `Jabatan: ${jabatan}\n` +
+                      `Status: ${jenis_absen}\n` +
+                      `Waktu: ${waktu_absen}\n` +
+                      `Lokasi: ${lokasiGPS}\n\n` +
+                      `Terima kasih.`;
+
+        const encodedMessage = encodeURIComponent(pesan);
+        const whatsappURL = `https://wa.me/628158700081?text= ${encodedMessage}`;
+        window.open(whatsappURL, '_blank');
+    }
+</script>
+
+</body>
+</html>?text= ${encodedMessage}`;
+        window.open(whatsappURL, '_blank');
+    }
+</script>
+
+</body>
+</html>
